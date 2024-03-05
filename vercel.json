@@ -1,6 +1,6 @@
 {
     "version": 2,
-    "name": "e-commerce-backend",
-    "builds": [{ "src": "index.js" , "use": "@vercel/node"}],
-    "routes": [{"src": "/(.*)", "dest": "/index.js"}]
+    "name": "backend",
+    "builds": [{ "src": "server.js" , "use": "@vercel/node"}],
+    "routes": [{"src": "/(.*)", "dest": "/server.js"}]
 }
