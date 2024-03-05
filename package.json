@@ -1,0 +1,40 @@
+{
+  "name": "sri-trend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "cross-env NODE_ENV=production node server.js",
+    "build": "next build"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.18",
+    "@reduxjs/toolkit": "^2.2.1",
+    "aws-sdk": "^2.1565.0",
+    "axios": "^1.6.7",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.2.0",
+    "multer": "^1.4.5-lts.1",
+    "next": "^14.1.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-redux": "^9.1.0",
+    "react-toastify": "^10.0.4",
+    "redux": "^5.0.1",
+    "redux-persist": "^6.0.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0"
+  }
+}
