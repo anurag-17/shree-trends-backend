@@ -79,10 +79,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
-// Swagger GUI API 
-// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
-
 app.use('/api/auth', require("./Route/AuthRouter"));
 app.use("/api/vendor", require("./Route/vendorRouter"));
 app.use("/api/product", require("./Route/ProductRouter"));
