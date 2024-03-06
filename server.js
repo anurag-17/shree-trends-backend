@@ -63,7 +63,7 @@ const app = express();
 const corsOptions = {
   origin: [
   "http://localhost:3000",
-  "https://shri-trends-front.vercel.app" 
+  "https://shri-trends-front.vercel.app", 
   "*"
 ],
   credentials: true, 
