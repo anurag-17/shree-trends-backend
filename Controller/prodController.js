@@ -221,3 +221,28 @@ exports.deleteAllWishlistItems = async (req, res) => {
     res.status(500).json({ error: "An error occurred while deleting wishlist items" });
   }
 };
+
+exports.analyticsCount = async (req, res) => {
+  const todaySales = 50;
+  const lastSevenDaySales = 152;
+  const lastThirtyDaySales = 90;
+  const lastOneEightyDaySales = 612;
+
+  const productCount = await Product.countDocuments();
+  const totalProduct = productCount;
+  
+  const availableStock = 1231;
+  const stockValue = 52;
+  const orderReceived = 213;
+
+  res.status(200).json({
+    todaySales,
+    lastSevenDaySales,
+    lastThirtyDaySales,
+    lastOneEightyDaySales,
+    totalProduct,
+    availableStock,
+    stockValue,
+    orderReceived
+  })
+}
