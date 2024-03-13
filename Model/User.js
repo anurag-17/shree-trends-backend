@@ -54,7 +54,7 @@ const UserSchema = new mongoose.Schema(
     },
     referredBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: ["User", "Admin"],
     },
     passwordChangedAt: Date,
     passwordResetToken: String,
