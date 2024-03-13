@@ -523,7 +523,7 @@ exports.getallUser = async (req, res) => {
     const currentPage = parseInt(page, 10);
     const itemsPerPage = parseInt(limit, 10);
 
-    const userQuery = User.find().populate("referredBy");
+    const userQuery = User.find();
 
     if (searchQuery) {
       userQuery.or([
