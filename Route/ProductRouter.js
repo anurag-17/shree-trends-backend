@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { createProduct, updateProduct, deleteProduct, deleteBulkProducts, getAllProduct, getProductsByVendor,updateProductVendor,getaProduct, addToWishlist, deleteAllWishlistItems, analyticsCount} = require("../Controller/prodController");
+const { createProduct, updateProduct, deleteProduct, deleteBulkProducts, getAllProduct, getProductsByVendor,updateProductVendor,getaProduct, addToWishlist, deleteAllWishlistItems, analyticsCount,getallWishlist} = require("../Controller/prodController");
 const { isAuthenticatedUser, authorizeRoles } = require("../middleware/auth");
 // isAuthenticatedUser, authorizeRoles("admin"),
 
@@ -18,10 +18,14 @@ router.route("/analyticsCount").get(analyticsCount);
 
 router.route("/updateProductVendor/:productId").post(updateProductVendor)
 
-// Add to Wishlist
-router.route("/addToWishlist").post( isAuthenticatedUser, addToWishlist);
+
 
 // Add to Wishlist
+router.route("/addToWishlist").post( isAuthenticatedUser, addToWishlist);
 router.route("/deleteAllWishlistItems").delete( isAuthenticatedUser, deleteAllWishlistItems);
+router.route("/getallWishlist").get( isAuthenticatedUser, getallWishlist);
+
+
+
 
 module.exports = router;

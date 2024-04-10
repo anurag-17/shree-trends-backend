@@ -4,6 +4,10 @@ const ErrorResponse = require("../Utils/errorRes");
 // const slugify = require("slugify");
 const validateMongoDbId = require("../Utils/validateMongodbId");
 const mongoose = require("mongoose");
+const Wishlist = require("../Model/WishlistModel");
+
+
+
 
 exports.createProduct = async (req, res) => {
     try {
@@ -175,52 +179,109 @@ exports.updateProductVendor = async (req, res) => {
   res.json(product);
 };
 
+
+
+
+
+
 exports.addToWishlist = async (req, res) => {
-  const { prodId } = req.body;
-  const { _id } = req.user._id;
   try {
-    const user = await User.findById(_id);
-    const alreadyadded = user.wishlist.find((id) => id.toString() === prodId);
-    if (alreadyadded) {
-      // Remove the product from the wishlist
-      user.wishlist = user.wishlist.filter(id => id.toString() !== prodId);
-      await user.save();
-      res.json({ message: 'Product removed from wishlist', wishlist: user.wishlist, added: false });
-    } else {
-      // Add the product to the wishlist
-      user.wishlist.push(prodId);
-      await user.save();
-      res.json({ message: 'Product added to wishlist', wishlist: user.wishlist, added: true });
+    const { userId, productId } = req.body;
+    
+    // Find the user's wishlist or create a new one if it doesn't exist
+    let wishlist = await Wishlist.findOne({ user: userId });
+    console.log("wishlist", wishlist);
+    if (!wishlist) {
+      console.log("1");
+      wishlist = new Wishlist({ user: userId, products: [] });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while updating the wishlist' });
+    
+    // Add the product to the wishlist if it's not already in there
+    if (!wishlist.products.includes(productId)) {
+      console.log("2");
+      wishlist.products.push(productId);
+      await wishlist.save();
+      res.json({ status: true, message: 'Product added to wishlist', wishlist: wishlist });
+    } else {
+      console.log("555");
+      res.json({ status: false, message: 'already added to wishlist' });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status:false,error: 'Internal server error' });
   }
 };
 
+
 exports.deleteAllWishlistItems = async (req, res) => {
-  const { _id } = req.user._id;
+  // const { _id } = req.user._id;
+  const { id }  = req.body;
 
   try {
     // Find the user by ID
-    const user = await User.findById(_id);
-
+    const user = await Wishlist.findById(id);
+    console.log("wishlist",Wishlist);
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ status:false,error: "User not found" });
     }
-
     // Clear the user's wishlist by setting it to an empty array
     user.wishlist = [];
-
     // Save the user to update the wishlist
-    await user.save();
+    await Wishlist.deleteOne();
 
-    res.json({ message: "All wishlist items deleted" });
+    res.json({ status:true , message: "wishlist items deleted" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "An error occurred while deleting wishlist items" });
+    res.status(500).json({ status:false,error: 'Internal server error' });
+
   }
 };
+
+
+exports.getallWishlist = async (req, res) => {
+  try {
+    const searchQuery = req.query.search;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const userId = req.query.userId;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ status: false, error: "User not found" });
+    }
+
+    let wishlistQuery = Wishlist.find({ user: userId }).populate('products'); // Find the user's wishlist and populate the 'products' field
+    
+    if (searchQuery) {
+      wishlistQuery = wishlistQuery.or([
+        { title: { $regex: searchQuery, $options: "i" } },
+        { description: { $regex: searchQuery, $options: "i" } }
+      ]);
+    }
+
+    // Execute the query and apply pagination
+    const wishlists = await wishlistQuery.skip((page - 1) * limit).limit(limit).exec();
+
+    // Count the total number of wishlists without applying pagination
+    const totalWishlists = await Wishlist.find({ user: userId }).countDocuments();
+
+    const pagination = {
+      currentPage: page,
+      totalPages: Math.ceil(totalWishlists / limit),
+      totalWishlists: totalWishlists,
+      wishlistsPerPage: wishlists.length
+    };
+
+    res.json({ wishlists, pagination });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status:false,error: 'Internal server error' });
+
+  }
+};
+
+
 
 exports.analyticsCount = async (req, res) => {
   const todaySales = 50;

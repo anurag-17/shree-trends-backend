@@ -44,7 +44,7 @@ router.route("/register").post(register);
 router.route("/adminRegister").post(adminRegister);
 
 // Update User Password
-router.post("/updatePassword", isAuthenticatedUser, updatePassword);
+router.post("/updatePassword/:id", isAuthenticatedUser, updatePassword);
 
 // Update User
 router.put("/edit-user/:id", isAuthenticatedUser, updatedUser);

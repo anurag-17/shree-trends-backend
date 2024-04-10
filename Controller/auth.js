@@ -2,10 +2,11 @@ const User = require("../Model/User");
 const Admin = require("../Model/AdminModel");
 const sendEmail = require("../Utils/SendEmail");
 const validateMongoDbId = require("../Utils/validateMongodbId");
-const { generateToken , verifyToken} = require("../config/jwtToken");
+const { generateToken, verifyToken } = require("../config/jwtToken");
 const sendToken = require("../Utils/jwtToken");
 const jwt = require("jsonwebtoken");
 const uploadOnS3 = require("../Utils/uploadImage");
+const Vendor = require("../Model/vendorModel");
 
 exports.uploadImage = async (req, res, next) => {
   try {
@@ -25,7 +26,7 @@ exports.uploadImage = async (req, res, next) => {
 };
 
 exports.register = async (req, res, next) => {
-  const { firstname, lastname, userName, email, mobile, altNumber, gstNo, companyName, password, role, address, referralCode} = req.body;
+  const { firstname, lastname, userName, email, mobile, altNumber, gstNo, companyName, password, role, address, referralCode } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -33,18 +34,21 @@ exports.register = async (req, res, next) => {
   }
 
   let referredBy;
+  let secretOrPrivateKey;
+
 
   // Check referral code against Admin model
   referredBy = await Admin.findOne({ referralCode });
-
-  if (!referredBy) {
-    referredBy = await User.findOne({ referralCode });
-  }
+  console.log("referredBy", referredBy);
 
   // Check if the referral code is valid
   if (!referredBy) {
     return res.status(400).json({ error: "Invalid referral code" });
   }
+
+  // if (referredBy) {
+  //   secretOrPrivateKey = await User.findOne({ referralCode });
+  // }
 
   const userData = {
     email,
@@ -117,7 +121,7 @@ exports.login = async (req, res, next) => {
     if (findUser && (await findUser.matchPasswords(password))) {
       // const token = generateToken({ id: findUser._id });
       const token = generateToken(findUser._id, findUser.role);
-      
+
       await User.findByIdAndUpdate(
         { _id: findUser._id?.toString() },
         { activeToken: token },
@@ -153,9 +157,9 @@ exports.login = async (req, res, next) => {
 
 exports.adminRegister = async (req, res, next) => {
   const { email, password } = req.body;
-
+  console.log({ email, password });
   const existingUser = await Admin.findOne({ email });
-
+  console.log(existingUser);
   if (existingUser) {
     return res.status(203).json({ error: "Admin with this email already exists." });
   }
@@ -166,25 +170,27 @@ exports.adminRegister = async (req, res, next) => {
     lastname: req.body.lastname,
     mobile: req.body.mobile
   };
-
+  console.log("userData", userData);
   if (password) {
     userData.password = password;
   }
 
   try {
     const newUser = await Admin.create(userData);
+    console.log("newUser", newUser);
     sendToken(newUser, 201, res);
   } catch (error) {
+    console.log("logcatch");
     next(error);
   }
 };
 
 exports.adminLogin = async (req, res, next) => {
   const { email, password } = req.body;
-  
+
   try {
     const findAdmin = await Admin.findOne({ email }).select("+password");
-    
+
     if (!findAdmin) {
       throw new Error("Admin not found");
     }
@@ -227,6 +233,9 @@ exports.adminLogin = async (req, res, next) => {
   }
 };
 
+
+
+
 exports.logout = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -234,16 +243,16 @@ exports.logout = async (req, res) => {
     if (authHeader) {
       token = authHeader;
     }
-    
+
     if (!token) {
       return res
         .status(401)
-        .json({ message: "Please login to access this resource" });
+        .json({ status:false,message: "Please login to access this resource" });
     }
 
     const decodedData = jwt.verify(token, process.env.JWT_SECRET);
 
-    const userData = await User.findOne({_id:decodedData?.id});
+    const userData = await User.findOne({ _id: decodedData?.id });
 
     if (userData.activeToken && userData.activeToken === token) {
       const user = await User.findOneAndUpdate(
@@ -254,26 +263,26 @@ exports.logout = async (req, res) => {
       if (!user) {
         return res
           .status(401)
-          .json({ message: "Invalid session or token, please login again" });
+          .json({ status:false,message: "Invalid session or token, please login again" });
       }
       return res.status(200).json({
-        message: `${userData._id} is Logout Successfully`,
+        status:true,message: `${userData._id} is Logout Successfully`,
       });
     } else {
       return res
         .status(401)
-        .json({ message: "Token expired, please login again" });
+        .json({ status:false,message: "Token expired, please login again" });
     }
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       return res
         .status(401)
-        .json({ message: "Token expired, please login again" });
+        .json({ status:false,message: "Token expired, please login again" });
     } else if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({ message: "Invalid token" });
+      return res.status(401).json({ status:false,message: "Invalid token" });
     } else {
       console.error("Other error:", error);
-      return res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ status:false,message: "Server error" }); 
     }
   }
 };
@@ -285,16 +294,16 @@ exports.adminLogout = async (req, res) => {
     if (authHeader) {
       token = authHeader;
     }
-    
+
     if (!token) {
       return res
         .status(401)
-        .json({ message: "Please login to access this resource" });
+        .json({ status:false,message: "Please login to access this resource" });
     }
 
     const decodedData = jwt.verify(token, process.env.JWT_SECRET);
 
-    const userData = await Admin.findOne({_id:decodedData?.id});
+    const userData = await Admin.findOne({ _id: decodedData?.id });
 
     if (userData.activeToken && userData.activeToken === token) {
       const user = await Admin.findOneAndUpdate(
@@ -305,26 +314,26 @@ exports.adminLogout = async (req, res) => {
       if (!user) {
         return res
           .status(401)
-          .json({ message: "Invalid session or token, please login again" });
+          .json({status:false,message:"Invalid session or token, please login again" });
       }
       return res.status(200).json({
-        message: `${userData._id} is Logout Successfully`,
+        status:true,message:`${userData._id} is Logout Successfully`,
       });
     } else {
       return res
         .status(401)
-        .json({ message: "Token expired, please login again" });
+        .json({ status:false,message:"Token expired, please login again" });
     }
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       return res
         .status(401)
-        .json({ message: "Token expired, please login again" });
+        .json({ status:false,message: "Token expired, please login again" });
     } else if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({ message: "Invalid token" });
+      return res.status(401).json({ status:false,message: "Invalid token" });
     } else {
       console.error("Other error:", error);
-      return res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ status:false,message: "Server error" });
     }
   }
 };
@@ -336,7 +345,7 @@ exports.forgotPassword = async (req, res, next) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json(`${email} this email is not registered`);
+      return res.status(401).json(`status:false,message:${email} this email is not registered`);
     }
     const resetToken = user.getResetPasswordToken();
     await user.save();
@@ -413,8 +422,8 @@ exports.forgotPassword = async (req, res, next) => {
         text: message,
       });
       res.status(200).json({
-        success: true,
-        data: "Password Reset Email Sent Successfully",
+        status:true,message:"Password Reset Email Sent Successfully",
+        token: `${resetUrl}`
       });
     } catch (error) {
       user.passwordResetToken = undefined;
@@ -424,10 +433,13 @@ exports.forgotPassword = async (req, res, next) => {
 
       return res
         .status(500)
-        .json({ success: false, data: "Email could not be sent" });
+        .json({ status:false,message: "Email could not be sent" });
     }
   } catch (error) {
     next(error);
+    return res
+    .status(500)
+    .json({ status:false,message: "server error" });
   }
 };
 
@@ -437,10 +449,10 @@ exports.resetPassword = async (req, res, next) => {
       passwordResetToken: req.params.resetToken,
       passwordResetExpires: { $gt: Date.now() },
     });
-    
+
     if (!user) {
-      res.status(400).json("Invalid Reset Token");
-      
+      res.status(400).json({status:false,message:"Invalid Reset Token"});
+
     }
     user.password = req.body.password;
     user.passwordResetToken = undefined;
@@ -448,22 +460,22 @@ exports.resetPassword = async (req, res, next) => {
 
     await user.save();
     res.status(201).json({
-      success: true,
-      data: "Password Reset Successfully",
+      status:true,message:"Password Reset Successfully",
     });
   } catch (error) {
     next(error);
+    res.status(500).json({status:false,message:"server error"});
   }
 };
 
 exports.verifyUser = async (req, res) => {
-  const {token } = req.params;
+  const { token } = req.params;
 
   try {
     const decodedData = verifyToken(token);
 
     if (!decodedData) {
-      return res.status(401).json({ message: "Unauthorized Access" });
+      return res.status(401).json({ status:false,message: "Unauthorized Access" });
     }
 
     const { id } = decodedData;
@@ -471,24 +483,24 @@ exports.verifyUser = async (req, res) => {
     const LoggedUser = await User.findOne({ _id: id, activeToken: token }).select("-password -activeToken");
 
     if (!LoggedUser) {
-      return res.status(401).json({ message: "Unauthorized Access" });
+      return res.status(401).json({ status:false,message: "Unauthorized Access" });
     }
 
-    return res.status(200).json({ data: LoggedUser, message: "Verification Successful" });
+    return res.status(200).json({ status:true,message: "Verification Successful" , data: LoggedUser});
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ status:false,message: "server error" });
   }
 };
 
 exports.verifyAdmin = async (req, res) => {
-  const {token } = req.params;
+  const { token } = req.params;
 
   try {
     const decodedData = verifyToken(token);
 
     if (!decodedData) {
-      return res.status(401).json({ message: "Unauthorized Access" });
+      return res.status(401).json({ status:false,message:"Unauthorized Access" });
     }
 
     const { id } = decodedData;
@@ -496,34 +508,38 @@ exports.verifyAdmin = async (req, res) => {
     const LoggedUser = await Admin.findOne({ _id: id, activeToken: token }).select("-password -activeToken");
 
     if (!LoggedUser) {
-      return res.status(401).json({ message: "Unauthorized Access" });
+      return res.status(401).json({ status:false,message: "Unauthorized Access" });
     }
 
-    return res.status(200).json({ data: LoggedUser, message: "Verification Successful" });
+    return res.status(200).json({  status:true,message: "Verification Successful" ,data: LoggedUser});
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ status:false,message: "server error" });
   }
 };
+
+
 
 exports.updatedUser = async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updatedUser);
+    res.json({  status:true,message: "details apdated successfully",data:updatedUser});
   } catch (error) {
-    throw new Error(error);
+    // throw new Error(error);
+    res.json({  status:false,message: "some error"});
+
   }
 };
 
 exports.getallUser = async (req, res) => {
   try {
-    const { page = 1, limit = 10} = req.query;
+    const { page = 1, limit = 10 } = req.query;
     const searchQuery = req.query.search;
-    
+
     const currentPage = parseInt(page, 10);
     const itemsPerPage = parseInt(limit, 10);
 
-    const userQuery = User.find().populate("referredBy") ;
+    const userQuery = User.find().populate("referredBy");
 
     if (searchQuery) {
       userQuery.or([
@@ -543,24 +559,21 @@ exports.getallUser = async (req, res) => {
     const skip = (currentPage - 1) * itemsPerPage;
     const users = await userQuery.sort({ firstname: 1 }).skip(skip).limit(itemsPerPage).exec();
 
-    res.json({
-      totalItems,
-      totalPages,
-      currentPage,
-      users,
-    });
+    res.json({ status:true,message: "get data successfully",data:users,totalItems:totalItems,
+    totalPages:totalPages,
+    currentPag:currentPage});
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ status:false,message:"Internal Server Error" });
   }
 };
 
 exports.getaUser = async (req, res) => {
-  const { _id } = req.user;
-  validateMongoDbId(_id);
+  const { id } = req.query;
+  validateMongoDbId(id);
 
   try {
-    const getaUser = await User.findById(_id)
+    const getaUser = await User.findById(id)
     res.json({
       getaUser
     });
@@ -622,7 +635,7 @@ exports.updatePassword = async (req, res) => {
 
 exports.getAdminReferralDetails = async (req, res, next) => {
   const { adminId } = req.params;
-
+console.log(adminId);
   try {
     const admin = await Admin.findById(adminId);
     if (!admin) {
@@ -675,7 +688,7 @@ exports.getSubDealerReferralDetails = async (req, res, next) => {
       return res.status(404).json({ error: "Sub-dealer not found" });
     }
 
-    const referredUsers = await User.find({ referredBy: subDealerId });
+    const referredUsers = await Vendor.find({ referredBy: subDealerId });
 
     return res.status(200).json({
       subDealer: {
@@ -711,3 +724,7 @@ exports.getSubDealerReferralDetails = async (req, res, next) => {
     next(error);
   }
 };
+
+
+
+

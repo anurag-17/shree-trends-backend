@@ -84,11 +84,15 @@ app.use(express.urlencoded({ limit: "5mb", extended: true }));
 app.use('/api/auth', require("./Route/AuthRouter"));
 app.use("/api/vendor", require("./Route/vendorRouter"));
 app.use("/api/product", require("./Route/ProductRouter"));
+app.use('/api/admin', require("./Route/adminRouter"));
+app.use('/api/wallet', require("./Route/walletRouter"));
+
 // Error Handler 
 // app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 
 const server = app.listen(PORT, () =>
+
   console.log(`> Ready on http://localhost:${PORT}`)
 );

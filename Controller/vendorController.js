@@ -1,9 +1,59 @@
 const Vendor = require("../Model/vendorModel");
 const validateMongoDbId = require("../Utils/validateMongodbId");
+const User = require("../Model/User");
+const sendToken = require("../Utils/jwtToken");
 
-exports.createVendor = async (req, res) => {
-  const newVendor = await Vendor.create(req.body);
-  res.json(newVendor);
+
+exports.createVendor = async (req, res, next) => {
+  // const newVendor = await Vendor.create(req.body);
+  // res.json(newVendor);
+
+
+  const { address, phone, email, companyName, vendorName, role, referralCode } = req.body;
+
+  const existingUser = await Vendor.findOne({ email });
+  if (existingUser) {
+    return res.status(203).json({ error: "User with this email already exists." });
+  }
+
+  let referredBy;
+  let secretOrPrivateKey;
+
+
+  // Check referral code against Admin model
+  referredBy = await User.findOne({ referralCode });
+  console.log("referredBy", referredBy);
+
+  // Check if the referral code is valid
+  if (!referredBy) {
+    return res.status(400).json({ error: "Invalid referral code" });
+  }
+
+  // if (referredBy) {
+  //   secretOrPrivateKey = await User.findOne({ referralCode });
+  // }
+
+  const userData = {
+    email,
+    vendorName: vendorName,
+    phone: phone,
+    role: role,
+    address: address,
+    companyName: companyName,
+    referredBy: referredBy._id
+  };
+  try {
+    const newUser = await Vendor.create(userData);
+    // sendToken(newUser, 201, res);
+    return res.status(200).json({ newUser });
+
+  } catch (error) {
+    next(error);
+    res.status(500).json({ status:false,error: 'Internal server error' });
+
+  }
+
+
 };
 
 exports.updateVendor = async (req, res) => {
@@ -52,7 +102,9 @@ exports.getAllVendors = async (req, res) => {
 
     res.json({ vendors, pagination });
   } catch (error) {
-    throw new Error(error);
+    // throw new Error(error);
+    res.status(500).json({ status:false,error: 'Internal server error' });
+
   }
 };
 
@@ -66,6 +118,9 @@ exports.getaVendor = async (req, res) => {
       result,
     });
   } catch (error) {
-    throw new Error(error);
+    // throw new Error(error);
+    res.status(500).json({ status:false,error: 'Internal server error' });
+
   }
 };
+
