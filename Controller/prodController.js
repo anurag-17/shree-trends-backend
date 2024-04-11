@@ -180,10 +180,6 @@ exports.updateProductVendor = async (req, res) => {
 };
 
 
-
-
-
-
 exports.addToWishlist = async (req, res) => {
   try {
     const { userId, productId } = req.body;
@@ -214,8 +210,8 @@ exports.addToWishlist = async (req, res) => {
 
 
 exports.deleteAllWishlistItems = async (req, res) => {
-  // const { _id } = req.user._id;
-  const { id }  = req.body;
+  const { id } = req.user._id;
+  // const { id }  = req.body;
 
   try {
     // Find the user by ID
@@ -236,6 +232,44 @@ exports.deleteAllWishlistItems = async (req, res) => {
 
   }
 };
+
+
+exports.deleteOneWishlistItem = async (req, res) => {
+  const userId = req.user._id;
+  const productId = req.body.productId; // Assuming productId is passed in the request body
+
+  try {
+    // Find the user's wishlist by user ID
+    const wishlist = await Wishlist.findOne({ user: userId });
+
+    console.log('userId:', userId);
+    console.log('productId:', productId);
+    console.log('wishlist:', wishlist);
+
+    if (!wishlist) {
+      return res.status(404).json({ status: false, error: "User's wishlist not found" });
+    }
+
+    // Find the index of the product in the wishlist
+    const productIndex = wishlist.products.findIndex(product => product.toString() === productId);
+
+    if (productIndex === -1) {
+      return res.status(404).json({ status: false, error: "Product not found in wishlist" });
+    }
+
+    // Remove the product from the wishlist's products array
+    wishlist.products.splice(productIndex, 1);
+
+    // Save the updated wishlist
+    await wishlist.save();
+
+    res.json({ status: true, message: "Product deleted from wishlist" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: false, error: 'Internal server error' });
+  }
+};
+
 
 
 exports.getallWishlist = async (req, res) => {

@@ -11,7 +11,7 @@ const Vendor = require("../Model/vendorModel");
 exports.uploadImage = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: "Invalid request" });
+      return res.status(400).json({ status:false,message:  "Invalid request" });
     }
 
     let fileName = req.file.originalname;
@@ -21,10 +21,379 @@ exports.uploadImage = async (req, res, next) => {
     return res.status(200).json({ status: true, url: url });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ status:false,message: "Internal server error" });
   }
 };
 
+
+exports.Admin_User_Registration = async (req, res, next) => {
+
+  const { firstname, lastname, userName, email, mobile, altNumber, gstNo, companyName, password, role, address, referralCode } = req.body;
+  // const { email, password } = req.body;
+
+ if(role==='admin' || role==='dealer'){
+if (role === 'admin') {
+  
+  console.log({ email, password });
+  const existingUser = await Admin.findOne({ email });
+  console.log(existingUser);
+
+  if (existingUser) {
+    return res.status(203).json({ status:false,message:  "Admin with this email already exists." });
+  }
+  
+  const userData = {
+    email,
+    firstname: req.body.firstname,
+    lastname: req.body.lastname,
+    mobile: req.body.mobile
+  };
+  console.log("userData", userData);
+  if (password) {
+    userData.password = password;
+  }
+
+  try {
+    const newUser = await Admin.create(userData);
+    console.log("newUser", newUser);
+    sendToken(newUser, 201, res);
+    return res.status(200).json({ status: true,message: "Admin Register Successfully", data: newUser });
+    // console.log("2newUser", newUser);
+
+  } catch (error) {
+    console.log("logcatch");
+    // next(error);
+    return res.status(500).json({ status:false,message: "Internal server error" });
+
+  }  
+
+
+}else{
+  // role === 'dealer'
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res.status(203).json({ status:false,message:  "User with this email already exists." });
+  }
+
+  let referredBy;
+  let secretOrPrivateKey;
+
+
+  // Check referral code against Admin model
+  referredBy = await Admin.findOne({ referralCode });
+  console.log("referredBy", referredBy);
+
+  // Check if the referral code is valid
+  if (!referredBy) {
+    return res.status(400).json({ status:false,message:  "Invalid referral code" });
+  }
+
+  // if (referredBy) {
+  //   secretOrPrivateKey = await User.findOne({ referralCode });
+  // }
+
+  const userData = {
+    email,
+    // provider_ID: req.body.provider_ID,
+    // provider: req.body.provider,
+    firstname: firstname,
+    lastname: lastname,
+    mobile: mobile,
+    role: role,
+    address: address,
+    userName: userName,
+    altNumber: altNumber,
+    gstNo: gstNo,
+    companyName: companyName,
+    referredBy: referredBy._id
+  };
+
+  if (password) {
+    userData.password = password;
+  }
+
+  try {
+    const newUser = await User.create(userData);
+    sendToken(newUser, 201, res);
+    return res.status(200).json({ status: true,message: "User Register Successfully", data: newUser });
+
+  } catch (error) {
+    // next(error);
+    return res.status(500).json({ status:false,message: "Internal server error" });
+
+  }
+}
+
+}else{
+  return res.status(400).json({ status:false,message: "Please Provide right Informations" });
+}
+
+}
+
+
+exports.Admin_User_Login= async (req, res, next) => {
+
+  const { email, password, role} = req.body;
+  // const { email, password } = req.body;
+
+  if (!email || !password || !role) {
+    // return next(new ErrorResponse("Please provide Email", 400));
+    return res.status(400).json({ status:false,message: "Please Provide All Informations" });
+
+  }
+
+
+  if(role==='admin' || role==='dealer') {
+if (role === 'admin') {
+  
+  try {
+
+    const findAdmin = await Admin.findOne({ email }).select("+password");
+
+    if (!findAdmin) {
+    return res.status(404).json({ status:false,message: "Admin not found" });
+    // throw new Error("Admin not found");
+    }
+
+    if (findAdmin.role !== "admin") {
+      // throw new Error("Not Authorized");
+    return res.status(500).json({ status:false,message: "Not Authorized" });
+
+    }
+
+    if (await findAdmin.matchPasswords(password)) {
+      // const token = generateToken({ id: findAdmin._id });
+      const token = generateToken(findAdmin._id, findAdmin.role);
+
+      await Admin.findByIdAndUpdate(
+        { _id: findAdmin._id?.toString() },
+        { activeToken: token },
+        { new: true }
+      );
+      const user = {
+        success: true,
+        user: {
+          _id: findAdmin._id,
+          firstname: findAdmin.firstname,
+          lastname: findAdmin.lastname,
+          email: findAdmin.email,
+          referralCode: findAdmin.referralCode,
+          companyName: findAdmin.companyName,
+        },
+        token: token,
+      };
+      return res.status(200).json({ status: true,message: "User Login Successfully", data: user });
+
+      // return res.status(200).json(user);
+    } else {
+      // throw new Error("Invalid Credentials");
+    return res.status(400).json({ status:false,message: "Invalid Credentials" });
+
+    }
+  } catch (error) {
+    return res.status(500).json({ status:false,message: "Internal server error" });
+  }
+
+}else{
+  // role === 'dealer'
+
+  try {
+
+    const findUser = await User.findOne({ email }).select("+password");
+    // If user exists and is authenticated via a third-party provider
+    if (findUser && !findUser.password) {
+      // const token = generateToken({ id: findUser._id });
+      const token = generateToken(findUser._id, findUser.role);
+
+      await User.findByIdAndUpdate(
+        { _id: findUser._id?.toString() },
+        { activeToken: token },
+        { new: true }
+      );
+
+      const user = {
+        success: true,
+        user: {
+          _id: findUser._id,
+          firstname: findUser.firstname,
+          lastname: findUser.lastname,
+          email: findUser.email,
+          referralCode: findUser.referralCode,
+          companyName: findUser.companyName,
+          referredBy: findUser.referredBy
+          // provider: findUser.provider,
+        },
+        token: token,
+      };
+      return res.status(200).json({ status: true,message: "User Login Successfully", data: user });
+      // return res.status(200).json(user);
+    }
+
+    // If user exists and has a password, continue with password-based authentication
+    if (findUser && (await findUser.matchPasswords(password))) {
+      // const token = generateToken({ id: findUser._id });
+      const token = generateToken(findUser._id, findUser.role);
+
+      await User.findByIdAndUpdate(
+        { _id: findUser._id?.toString() },
+        { activeToken: token },
+        { new: true }
+      );
+
+      const user = {
+        success: true,
+        user: {
+          _id: findUser._id,
+          firstname: findUser.firstname,
+          lastname: findUser.lastname,
+          email: findUser.email,
+          referralCode: findUser.referralCode,
+          companyName: findUser.companyName,
+          referredBy: findUser.referredBy
+          // provider: findUser.provider,
+        },
+        token: token,
+      };
+
+      return res.status(200).json({ status: true,message: "User Login Successfully", data: user });
+      // return res.status(200).json(user);
+    } else {
+      return res.status(401).json({ status: false,message: "Invalid Credentials" });
+    }
+  } catch (error) {
+    return res.status(500).json({ status:false,message: "Internal server error" });
+
+  }
+}
+}else{
+  return res.status(400).json({ status:false,message: "Please Provide right Informations" });
+}
+}
+
+
+exports.Admin_User_Logout= async (req, res, next) => {
+  const {role} = req.body;
+
+  if (!role) {
+    // return next(new ErrorResponse("Please provide Email", 400));
+    return res.status(400).json({ status:false,message: "Please Provide All Informations" });
+  }
+
+
+if(role==='admin' || role==='dealer')
+  {
+if(role === 'admin'){
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      token = authHeader;
+    }
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ status:false,message: "Please login to access this resource" });
+    }
+
+    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+
+    const userData = await Admin.findOne({ _id: decodedData?.id });
+
+    if (userData.activeToken && userData.activeToken === token) {
+      const user = await Admin.findOneAndUpdate(
+        { _id: decodedData.id, activeToken: token },
+        { $unset: { activeToken: "" } },
+        { new: true }
+      );
+      if (!user) {
+        return res
+          .status(401)
+          .json({status:false,message:"Invalid session or token, please login again" });
+      }
+      return res.status(200).json({
+        status:true,message:`${userData._id} is Logout Successfully`,
+      });
+    } else {
+      return res
+        .status(401)
+        .json({ status:false,message:"Token expired, please login again" });
+    }
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ status:false,message: "Token expired, please login again" });
+    } else if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ status:false,message: "Invalid token" });
+    } else {
+      console.error("Other error:", error);
+      return res.status(500).json({ status:false,message: "Server error" });
+    }
+  }
+
+}else{
+
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader) {
+      token = authHeader;
+    }
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ status:false,message: "Please login to access this resource" });
+    }
+
+    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+
+    const userData = await User.findOne({ _id: decodedData?.id });
+
+    if (userData.activeToken && userData.activeToken === token) {
+      const user = await User.findOneAndUpdate(
+        { _id: decodedData.id, activeToken: token },
+        { $unset: { activeToken: "" } },
+        { new: true }
+      );
+      if (!user) {
+        return res
+          .status(401)
+          .json({ status:false,message: "Invalid session or token, please login again" });
+      }
+      return res.status(200).json({
+        status:true,message: `${userData._id} is Logout Successfully`,
+      });
+    } else {
+      return res
+        .status(401)
+        .json({ status:false,message: "Token expired, please login again" });
+    }
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ status:false,message: "Token expired, please login again" });
+    } else if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ status:false,message: "Invalid token" });
+    } else {
+      console.error("Other error:", error);
+      return res.status(500).json({ status:false,message: "Server error" }); 
+    }
+  }
+
+}
+
+}
+else{
+  return res.status(400).json({ status:false,message: "Please Provide right Informations" });
+}
+
+}
+
+
+
+//++++ user + admin 
 exports.register = async (req, res, next) => {
   const { firstname, lastname, userName, email, mobile, altNumber, gstNo, companyName, password, role, address, referralCode } = req.body;
 
@@ -233,9 +602,6 @@ exports.adminLogin = async (req, res, next) => {
   }
 };
 
-
-
-
 exports.logout = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -337,6 +703,10 @@ exports.adminLogout = async (req, res) => {
     }
   }
 };
+
+
+
+
 
 exports.forgotPassword = async (req, res, next) => {
   const { email } = req.body;
@@ -574,11 +944,11 @@ exports.getaUser = async (req, res) => {
 
   try {
     const getaUser = await User.findById(id)
-    res.json({
-      getaUser
+    res.json({status:true,message: "Get data successfully",data:getaUser
     });
   } catch (error) {
-    throw new Error(error);
+    // throw new Error(error);
+    res.status(500).json({ status:false,message:"Internal Server Error" });
   }
 };
 
@@ -589,10 +959,11 @@ exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(id);
     res.status(200).json({
-      user,
+      status:true,message:"get data succsessfully",data:user
     });
   } catch (error) {
-    throw new Error(error);
+    // throw new Error(error);
+    res.status(500).json({ status:false,message:"Internal Server Error" });
   }
 };
 
@@ -603,10 +974,11 @@ exports.deleteaUser = async (req, res) => {
   try {
     const deleteaUser = await User.findByIdAndDelete(id);
     res.json({
-      deleteaUser,
+      status:true,message:"deleted data succsessfully",data:deleteaUser,
     });
   } catch (error) {
-    throw new Error(error);
+    // throw new Error(error);
+    res.status(500).json({ status:false,message:"Internal Server Error" });
   }
 };
 
@@ -626,10 +998,12 @@ exports.updatePassword = async (req, res) => {
     user.passwordChangedAt = Date.now();
     await user.save();
 
-    res.status(200).json({ message: "Password changed successfully" });
+    res.status(200).json({ status:true,message: "Password changed successfully" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ error: "Password change failed" });
+    // res.status(500).json({ error: "Password change failed" });
+    res.status(500).json({ status:false,message:"Password change failed" });
+
   }
 };
 
@@ -639,12 +1013,12 @@ console.log(adminId);
   try {
     const admin = await Admin.findById(adminId);
     if (!admin) {
-      return res.status(404).json({ error: "Admin not found" });
+      return res.status(404).json({ status:false,message: "Admin not found" });
     }
 
     const referredUsers = await User.find({ referredBy: adminId }).populate("referredBy");
 
-    return res.status(200).json({
+    return res.status(200).json({status:true,
       admin: {
         _id: admin._id,
         firstname: admin.firstname,
@@ -675,7 +1049,8 @@ console.log(adminId);
       }))
     });
   } catch (error) {
-    next(error);
+    // next(error);
+    res.status(500).json({ status:false,message:"Internal Server Error" });
   }
 };
 
@@ -690,7 +1065,7 @@ exports.getSubDealerReferralDetails = async (req, res, next) => {
 
     const referredUsers = await Vendor.find({ referredBy: subDealerId });
 
-    return res.status(200).json({
+    return res.status(200).json({status:true,
       subDealer: {
         _id: subDealer._id,
         firstname: subDealer.firstname,
@@ -721,7 +1096,8 @@ exports.getSubDealerReferralDetails = async (req, res, next) => {
       }))
     });
   } catch (error) {
-    next(error);
+    // next(error);
+    res.status(500).json({ status:false,message:"Internal Server Error" });
   }
 };
 
