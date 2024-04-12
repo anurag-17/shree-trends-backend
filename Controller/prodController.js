@@ -210,12 +210,12 @@ exports.addToWishlist = async (req, res) => {
 
 
 exports.deleteAllWishlistItems = async (req, res) => {
-  const { id } = req.user._id;
-  // const { id }  = req.body;
+  // const { id } = req.user._id;
+  const { id }  = req.body;
 
   try {
     // Find the user by ID
-    const user = await Wishlist.findById(id);
+    const user = await User.findById(id);
     console.log("wishlist",Wishlist);
     if (!user) {
       return res.status(404).json({ status:false,error: "User not found" });
