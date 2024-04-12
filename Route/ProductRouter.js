@@ -27,6 +27,4 @@ router.route("/getallWishlist").get( isAuthenticatedUser, getallWishlist);
 router.route("/deleteOneWishlistItem").delete( isAuthenticatedUser, deleteOneWishlistItem);
 
 
-
-
 module.exports = router;

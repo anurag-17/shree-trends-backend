@@ -204,7 +204,7 @@ exports.addToWishlist = async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status:false,error: 'Internal server error' });
+    res.status(500).json({ status:false,message: 'Internal server error' });
   }
 };
 
@@ -218,7 +218,7 @@ exports.deleteAllWishlistItems = async (req, res) => {
     const user = await User.findById(id);
     console.log("wishlist",Wishlist);
     if (!user) {
-      return res.status(404).json({ status:false,error: "User not found" });
+      return res.status(404).json({ status:false,message: "User not found" });
     }
     // Clear the user's wishlist by setting it to an empty array
     user.wishlist = [];
@@ -228,7 +228,7 @@ exports.deleteAllWishlistItems = async (req, res) => {
     res.json({ status:true , message: "wishlist items deleted" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ status:false,error: 'Internal server error' });
+    res.status(500).json({ status:false,message: 'Internal server error' });
 
   }
 };
@@ -254,7 +254,7 @@ exports.deleteOneWishlistItem = async (req, res) => {
     const productIndex = wishlist.products.findIndex(product => product.toString() === productId);
 
     if (productIndex === -1) {
-      return res.status(404).json({ status: false, error: "Product not found in wishlist" });
+      return res.status(404).json({ status: false, message: "Product not found in wishlist" });
     }
 
     // Remove the product from the wishlist's products array
@@ -266,7 +266,7 @@ exports.deleteOneWishlistItem = async (req, res) => {
     res.json({ status: true, message: "Product deleted from wishlist" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ status: false, error: 'Internal server error' });
+    res.status(500).json({ status: false, message: 'Internal server error' });
   }
 };
 
@@ -282,7 +282,7 @@ exports.getallWishlist = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ status: false, error: "User not found" });
+      return res.status(404).json({ status: false, message: "User not found" });
     }
 
     let wishlistQuery = Wishlist.find({ user: userId }).populate('products'); // Find the user's wishlist and populate the 'products' field
@@ -310,7 +310,7 @@ exports.getallWishlist = async (req, res) => {
     res.json({ wishlists, pagination });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ status:false,error: 'Internal server error' });
+    res.status(500).json({ status:false,message: 'Internal server error' });
 
   }
 };

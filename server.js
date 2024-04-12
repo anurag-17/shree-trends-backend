@@ -86,6 +86,9 @@ app.use("/api/vendor", require("./Route/vendorRouter"));
 app.use("/api/product", require("./Route/ProductRouter"));
 app.use('/api/admin', require("./Route/adminRouter"));
 app.use('/api/wallet', require("./Route/walletRouter"));
+app.use("/api/Cart", require("./Route/addCartRouter"));
+// app.use('/ , require('./Route/addCartRouter')) 
+
 
 // Error Handler 
 // app.use(errorHandler);
